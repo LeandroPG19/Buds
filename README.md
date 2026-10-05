@@ -1,84 +1,95 @@
 # MiBudsClient
 
-A Python & Flet-based desktop client for Xiaomi/Redmi Buds. Features real-time battery tracking and low-latency mode via Bluetooth.
+**See your Xiaomi / Redmi Buds battery and control them from your PC.** Battery of each earbud and the case, noise control and low-latency (gaming) mode for Redmi/Xiaomi Buds on Windows and Linux. No phone, no account, no cloud: the app talks to the earbuds directly over Bluetooth.
+
+[![License: GPL v3](https://img.shields.io/badge/license-GPLv3-blue.svg)](LICENSE)
+![Python](https://img.shields.io/badge/python-3.10%2B-blue)
+![Platforms](https://img.shields.io/badge/platform-Windows%20%7C%20Linux-lightgrey)
+
+[Leer en español](README.es.md)
+
+<p align="center">
+  <img src="docs/images/redmi-buds-5-pro.png" alt="MiBudsClient showing a Redmi Buds 5 Pro: battery of each earbud and noise control" width="360">
+</p>
+
+## Why
+
+Xiaomi only ships a phone app for its earbuds. On a PC you could pair them but never see how much battery was left, switch noise cancelling, or turn on the low-latency mode that removes the audio delay in games. MiBudsClient fills that gap, using the same protocol the official app uses.
 
 ## Features
 
-- **Battery Tracking:** Real-time display of battery percentages for left earbud, right earbud, and charging case.
-- **Charging Status:** Indicators showing whether the earbuds or case are currently charging.
-- **Low Latency Mode:** Off, Auto, and On modes for controlling Game Mode (Low Latency). Auto mode uses a single app list with Exclude/Include behavior and supports keeping low latency active until the app closes.
-- **System Tray Support:** Minimize to tray and control features like Low Latency Mode directly from the tray menu.
-- **Auto-Connect:** Automatically detects compatible connected Bluetooth devices.
-- **Single Instance Protection:** Prevents multiple instances of the application from running simultaneously.
-- **Windows Startup Support:** Option to start the application automatically when Windows boots.
-- **Smart Updater:** Built-in update checker that supports semantic versioning, including pre-release tags like `alpha`, `beta`, and `rc`.
-- **Modern UI:** A sleek, dark-themed interface built with the Flet framework.
+- **Battery** of the left earbud, the right earbud and the charging case, with a charging indicator and a sound when an earbud starts or stops charging.
+- **Noise control** (Redmi Buds 5 Pro): off, noise cancelling or transparency. The card follows the earbuds: if you change the mode by touching them, the app updates.
+- **Low-latency mode** (Redmi Buds 6 Play): Off, On, or **Auto**, which turns it on by itself when a game goes fullscreen, with per-app include/exclude lists.
+- **System tray**, **run at startup**, **single instance**, **update notifications** and automatic reconnection.
+- **Works with several models** with one app: it detects which earbuds are connected and shows only what that model supports.
 
-## Downloads
+## Supported earbuds
 
-<table>
-  <tr>
-    <td><img src="https://github.com/user-attachments/assets/3767c651-d965-4450-b191-1369292c8383" width="400"></td>
-  </tr>
-  <tr>
-    <td><a href="https://github.com/CesurPolat/MiBudsClient/releases"><img src="https://github.com/user-attachments/assets/abf831bc-7329-435a-a398-b1f6c706ca0d" width="200"></a></td>
-  </tr>
-</table>
+| Model | Battery | Noise control | Low-latency | Status |
+|-------|:-------:|:-------------:|:-----------:|--------|
+| Redmi Buds 5 Pro | left / right / case | yes | not yet | Verified on real hardware |
+| Redmi Buds 6 Play | left / right / case | n/a | yes | Verified on real hardware |
+| Any other Redmi / Xiaomi Buds | combined level reported by the OS | not yet | not yet | **Not verified**, help wanted |
 
-## Installation
+For a model that is not verified yet, the app still detects it, shows its name and a combined battery level (the same number Windows shows), and records the packets it exchanges so the model can get a proper profile. See [Help us support your model](#help-us-support-your-model).
 
-1. Clone or download this repository:
+> **Tested on Windows 11.** The original project supports Linux; the new models have not been tried on Linux yet. Reports are welcome.
+
+## Quick start
+
+1. Pair your earbuds in the Bluetooth settings of your system and **connect** them (take them out of the case).
+2. Install [Python](https://www.python.org/downloads/) 3.10 or newer, then:
+
    ```bash
-   git clone https://github.com/CesurPolat/MiBudsClient.git
-   cd MiBudsClient
+   git clone https://github.com/LeandroPG19/Buds.git
+   cd Buds
+   python -m venv .venv
    ```
 
-2. Install the required dependencies (Flet 1.0.x; the first launch downloads its desktop client):
+   Activate the environment (`.venv\Scripts\activate` on Windows, `source .venv/bin/activate` on Linux) and run:
+
    ```bash
    pip install -r requirements.txt
+   python main.py
    ```
 
-## Usage
+The first launch downloads the Flet desktop client, which can take a few minutes. After that it starts in seconds.
 
-Run the following command in your terminal to start the application:
+**If the app says it cannot find your earbuds:** make sure they are connected (not only paired), that they are out of the case, and that no other program is holding their control connection.
 
-```bash
-python main.py
+## How it works
+
+```
+Bluetooth device list  ->  model profile  ->  RFCOMM channel  ->  session  ->  UI
+   (by device name)       (profiles.py)      (OS SDP cache)    (battery, noise control)
 ```
 
-Upon launch, the app will automatically scan for your device and attempt to connect. Once connected, battery levels will be displayed on the screen.
+1. **Detect** which connected Bluetooth device is a Redmi/Xiaomi Buds, by name.
+2. **Pick its profile** (`bluetooth/profiles.py`): how to talk to that model and what it supports.
+3. **Find the control channel.** It differs per model, so the app reads it from the service records the OS already stored when you paired.
+4. **Open the session.** Newer earbuds, like the 5 Pro, only answer after an authentication handshake; the 6 Play answers directly.
+5. **Show** what the earbuds report and send what you click.
 
-## Building the Executable
+The protocol, including the handshake, is documented in [docs/PROTOCOL.md](docs/PROTOCOL.md).
 
-To package the application into a standalone executable for Windows, run the following command:
+## Help us support your model
+
+There are many Redmi/Xiaomi Buds models and I only have a few. If yours is not verified, you can get it supported in a few minutes:
+
+1. Connect your earbuds and run the app. A notice says the model is not verified and where the capture is saved: `%APPDATA%\MiBudsClient\packets-<model>.log`.
+2. Use the app for a minute (press **Check Battery**, change what you can).
+3. [Open an issue with the "Add my model" form](../../issues/new?template=add-my-model.yml) and attach the log.
+
+The log only contains the bytes exchanged with the earbuds. It can include your earbuds' Bluetooth address; delete those lines if you prefer. How to turn a capture into a profile is explained in [AGENTS.md](AGENTS.md) and [docs/PROTOCOL.md](docs/PROTOCOL.md).
+
+## Build an executable (Windows)
 
 ```bash
 flet pack main.py --icon assets\icon.ico --add-data "assets:assets" --name "MiBudsClient"
 ```
 
-```bash
-flet pack main.py \
-  --icon assets/icon.ico \
-  --add-data "assets:assets" \
-  --name "MiBudsClient" \
-  --hidden-import optparse
-```
-
-## Supported Devices
-
-The app picks whichever connected device is named like a Redmi/Xiaomi Buds and shows its name.
-
-| Model | Status |
-|-------|--------|
-| Redmi Buds 6 Play | Verified on hardware: battery and low latency mode |
-| Redmi Buds 5 Pro | Verified on hardware: battery of each earbud and the case, and noise control (off / noise cancelling / transparency). Low latency mode is not available yet. |
-| Any other Redmi/Xiaomi Buds | Same protocol assumed, **not verified**. The window shows a notice and every packet is recorded to `%APPDATA%\MiBudsClient\packets-<model>.log` so the model can get its own verified profile (see `bluetooth/profiles.py`). |
-
-## Credits
-
-The authentication handshake of newer earbuds (Redmi Buds 5 Pro) follows the protocol documented by
-[Gadgetbridge](https://codeberg.org/Freeyourgadget/Gadgetbridge) and
-[XiaomayEarbudsWin](https://github.com/Apechi/XiaomayEarbudsWin); this is an independent Python implementation validated on real hardware.
+On Linux add `--hidden-import optparse`. There are no prebuilt downloads for this version yet; the [upstream project](https://github.com/CesurPolat/MiBudsClient/releases) publishes executables for the Redmi Buds 6 Play only.
 
 ## Development
 
@@ -87,9 +98,24 @@ pip install -r requirements-dev.txt
 python -m pytest
 ```
 
+The test suite covers the protocol, the cipher (with challenge/answer pairs captured from real earbuds), discovery, reconnection and preferences. A change to the bytes of a profile still has to be tried on that model's hardware; see [AGENTS.md](AGENTS.md) for the project rules.
+
+```
+main.py              application and UI wiring
+bluetooth/           profiles, discovery, connection, controller, protocol and session
+ui/                  Flet components, tray and window handling
+utils/               preferences, updater, game monitor, packet capture
+tests/               pytest suite
+docs/                protocol documentation
+```
+
+## Credits
+
+This project is a fork of [CesurPolat/MiBudsClient](https://github.com/CesurPolat/MiBudsClient), which created the app and the Redmi Buds 6 Play support. The authentication handshake of newer earbuds follows the protocol documented by [Gadgetbridge](https://codeberg.org/Freeyourgadget/Gadgetbridge) and [XiaomayEarbudsWin](https://github.com/Apechi/XiaomayEarbudsWin); the Python implementation here is independent and validated on real hardware.
+
 ## License
 
-This project is licensed under the GNU General Public License v3.0 (GPLv3). See the [LICENSE](LICENSE) file for details.
+[GNU General Public License v3.0](LICENSE). This is free software: you can use, study, modify and share it, as long as derived work stays free too.
 
 ---
-**Note:** This is not an official Xiaomi application. It is developed for personal use and the open-source community.
+*This is not an official Xiaomi application. It is developed for personal use and the open-source community. "Xiaomi" and "Redmi" are trademarks of their owners.*

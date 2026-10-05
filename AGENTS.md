@@ -31,6 +31,8 @@
 
 - **Per-model protocol:** `bluetooth/profiles.py` (profiles, `match_profile`); defaults in `bluetooth/constants.py` (BATTERY_PATTERN, MODE_COMMAND_TEMPLATE, timeouts)
 - **Packet capture for unverified models:** `utils/diagnostics.py`
+- **Protocol documentation:** `docs/PROTOCOL.md` (framing, handshake, cipher, battery, noise control). Keep it in step with `bluetooth/spp_*.py` and the profiles.
+- **Adding a model from a capture:** the "Add my model" issue form (`.github/ISSUE_TEMPLATE/add-my-model.yml`) collects the packet log. Read the RFCOMM channel from the SDP records (`bluetooth/sdp.py` explains how), try the handshake of `docs/PROTOCOL.md`, then add a `DeviceProfile` with `verified=True` only after the model's own hardware confirmed it.
 - **Build config:** `MiBudsClient.spec` (assets bundling, icon path)
 - **UI constants (colors, sizes):** `ui/constants.py`
 

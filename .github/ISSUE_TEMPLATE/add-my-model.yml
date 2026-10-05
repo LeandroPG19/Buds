@@ -1,0 +1,48 @@
+name: Add my earbuds model
+description: Ask for support for a Redmi/Xiaomi Buds model and share what the app recorded.
+title: "Add support for: <model name>"
+labels: ["new-model"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for helping! MiBudsClient records the packets it exchanges with models that are not verified yet. With that file a real profile can be built for your model.
+
+        The file is at `%APPDATA%\MiBudsClient\packets-<model>.log` (Windows). It only holds the bytes exchanged with the earbuds, but it can include your earbuds' Bluetooth address: delete those lines if you prefer.
+  - type: input
+    id: model
+    attributes:
+      label: Earbuds model
+      description: Exactly as the app shows it, for example "Redmi Buds 4 Pro".
+    validations:
+      required: true
+  - type: dropdown
+    id: system
+    attributes:
+      label: Operating system
+      options:
+        - Windows 11
+        - Windows 10
+        - Linux
+    validations:
+      required: true
+  - type: textarea
+    id: shows
+    attributes:
+      label: What does the app show?
+      description: The battery numbers, the notice at the top, the status line. A screenshot helps.
+    validations:
+      required: true
+  - type: textarea
+    id: phone
+    attributes:
+      label: What does the official phone app show?
+      description: The real battery of each earbud and the case, and the options it offers (noise control, game mode...). It lets us check the numbers.
+  - type: textarea
+    id: log
+    attributes:
+      label: Packet log
+      description: Paste the content of the `packets-<model>.log` file, or attach it.
+      render: text
+    validations:
+      required: true
