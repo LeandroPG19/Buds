@@ -4,7 +4,7 @@
 # App Configuration
 # ─────────────────────────────────────────────────────────────────────────────
 APP_TITLE = "Redmi Buds"
-APP_VERSION = "v0.3.0"
+APP_VERSION = "v0.3.1"
 GITHUB_URL = "https://github.com/LeandroPG19/Buds"
 WINDOW_WIDTH = 550
 WINDOW_HEIGHT = 735

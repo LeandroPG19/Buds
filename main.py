@@ -197,7 +197,15 @@ def main(page: ft.Page):
 
         threading.Thread(target=_watcher, daemon=True).start()
 
+    def latency_supported() -> bool:
+        """False once the connected model is known not to have a low latency mode (Redmi Buds 5 Pro)."""
+        controller = controller_ref["instance"]
+        return controller is None or controller.profile.supports_low_latency
+
     def apply_monitor_latency_policy(is_fullscreen: bool, app_id: str, source: str = "monitor") -> None:
+        if not latency_supported():
+            return
+
         normalized_app = (app_id or "").strip().lower()
         selected_mode = controller_ref["selected_mode"]
         hold_enabled = bool(controller_ref["hold_until_app_close_enabled"])
