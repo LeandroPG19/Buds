@@ -4,7 +4,7 @@ import socket
 import threading
 from typing import Optional
 
-from .constants import RFCOMM_PORT, SOCKET_TIMEOUT, RECV_BUFFER_SIZE
+from .constants import SOCKET_TIMEOUT, RECV_BUFFER_SIZE
 
 
 class BluetoothConnection:
@@ -25,22 +25,28 @@ class BluetoothConnection:
         """Set connection status."""
         self._connected = value
     
-    def connect(self, address: str) -> None:
+    def connect(self, address: str, port: int) -> None:
         """Establish connection to device.
-        
+
         Args:
             address: Bluetooth MAC address
-            
+            port: RFCOMM channel of the device profile
+
         Raises:
-            Exception: If connection fails
+            Exception: If connection fails; the socket is closed first
         """
-        self._sock = socket.socket(
+        sock = socket.socket(
             socket.AF_BLUETOOTH,
             socket.SOCK_STREAM,
             socket.BTPROTO_RFCOMM
         )
-        self._sock.settimeout(SOCKET_TIMEOUT)
-        self._sock.connect((address, RFCOMM_PORT))
+        try:
+            sock.settimeout(SOCKET_TIMEOUT)
+            sock.connect((address, port))
+        except Exception:
+            sock.close()
+            raise
+        self._sock = sock
         self._connected = True
     
     def disconnect(self) -> None:
@@ -60,11 +66,13 @@ class BluetoothConnection:
             data: Bytes to send
             
         Raises:
+            ConnectionError: If there is no open socket
             Exception: If send fails
         """
         with self._lock:
-            if self._sock:
-                self._sock.send(data)
+            if not self._sock:
+                raise ConnectionError("Not connected")
+            self._sock.send(data)
     
     def receive(self) -> bytes:
         """Receive data from device.

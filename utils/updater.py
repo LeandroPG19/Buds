@@ -20,8 +20,9 @@ def parse_version(version_str: str) -> Tuple[int, ...]:
     
     if not match:
         # Fallback for non-standard versions: just extract all digit groups
-        digits = re.findall(r'\d+', v)
-        return tuple(map(int, digits)) + (4, 0)
+        digits = [int(d) for d in re.findall(r'\d+', v)][:3]
+        digits += [0] * (3 - len(digits))
+        return tuple(digits) + (4, 0)
 
     major, minor, patch, pre_type, pre_num = match.groups()
     

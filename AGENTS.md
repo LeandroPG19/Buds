@@ -3,15 +3,19 @@
 ## Must-follow constraints
 
 - **Windows and Linux support.** Bluetooth discovery can use platform-specific implementations (Windows: PowerShell via `subprocess` + `Get-PnpDevice`, Linux: native Linux-compatible discovery). Keep behavior consistent across supported platforms.
-- **Redmi Buds 6 Play only.** Supported device is hardcoded. Protocol parsing (battery pattern, mode commands) is device-specific; changes require testing on actual hardware.
-- **Single RFCOMM port.** RFCOMM_PORT = 6 in `bluetooth/constants.py`. Do not make this configurable.
+- **One app for the whole Xiaomi/Redmi Buds family.** The owner has several models and wants a single client (decided 2026-10-05; this replaces the old "6 Play only" rule). Everything that can differ per model lives in a `DeviceProfile` in `bluetooth/profiles.py`: name pattern, RFCOMM port, battery pattern and request, mode command, setup packets. Add a model by adding a profile there, never by branching in the controller or UI.
+- **`verified` means tested on hardware.** Redmi Buds 6 Play (legacy transport: commands are sent straight away) and Redmi Buds 5 Pro (`spp_auth` transport: SAFER+ challenge/response first; battery of left, right and case and noise control off/noise cancelling/transparency verified on a real unit on 2026-10-05; no low latency command known, so `supports_low_latency=False` and the UI hides that card; `supports_anc=True` shows the Noise Control card) are `verified=True`. Any other model uses the family profile with `verified=False`: the app shows a notice, records its packets to `%APPDATA%\MiBudsClient\packets-<model>.log` and shows the combined battery Windows reports. Do not flip `verified` or invent per-model bytes without a capture from that hardware.
+- **Authenticated models.** `bluetooth/spp_frame.py` (framing), `bluetooth/safer_plus.py` (cipher) and `bluetooth/spp_session.py` (handshake state machine) implement the protocol documented by Gadgetbridge (AGPL-3.0) and XiaomayEarbudsWin (MIT); credit them if code is derived. `tests/test_safer_plus.py` holds challenge/answer pairs captured from real earbuds: if they fail, the cipher is wrong. The RFCOMM channel comes from the OS SDP cache (`bluetooth/sdp.py`), never hard-coded alone: it differs per model (6 Play: 6, 5 Pro: 24).
+- **Device matching is by name.** `BluetoothDiscovery.select_device` picks a connected device whose name matches a profile (specific profiles before the family one). Do not fall back to an arbitrary connected device.
+- **RFCOMM port lives in the profile.** Default is 6 (`bluetooth/constants.py`); a model that needs another channel gets its own profile value.
 - **Assets directory bundling.** Build uses `datas=[('assets', 'assets')]` in PyInstaller spec. All UI assets (icon.ico, images) must stay in `assets/` folder.
 - **Single instance enforcement.** Application forbids multiple running instances via port 65432. Do not remove or change `check_for_existing_instance()` at app startup.
 - **Flet-only UI.** The entire UI layer (including system tray via pystray) depends on Flet. Do not introduce other UI frameworks.
 
 ## Validation before finishing
 
-- **Test with actual device.** Any changes to `bluetooth/protocol.py` or `bluetooth/constants.py` must be tested against Redmi Buds 6 Play hardware; unit tests alone are insufficient.
+- **Unit tests pass.** `pip install -r requirements-dev.txt`, then `python -m pytest`. New behavior gets a test seen failing first.
+- **Test with actual device.** Any change to the bytes of a profile in `bluetooth/profiles.py` or to `bluetooth/constants.py` must be tested against that model's hardware; unit tests alone are insufficient. `tests/test_protocol.py` pins the verified 6 Play bytes.
 - **Build succeeds.** Run `flet pack main.py --icon assets\icon.ico --add-data "assets:assets" --name "MiBudsClient"` and verify executable runs.
 - **Single instance works.** Launch executable twice; second instance should exit silently and focus existing window.
 
@@ -25,7 +29,8 @@
 
 ## Important locations
 
-- **Device protocol details:** `bluetooth/constants.py` (BATTERY_PATTERN, MODE_COMMAND_TEMPLATE, timeouts)
+- **Per-model protocol:** `bluetooth/profiles.py` (profiles, `match_profile`); defaults in `bluetooth/constants.py` (BATTERY_PATTERN, MODE_COMMAND_TEMPLATE, timeouts)
+- **Packet capture for unverified models:** `utils/diagnostics.py`
 - **Build config:** `MiBudsClient.spec` (assets bundling, icon path)
 - **UI constants (colors, sizes):** `ui/constants.py`
 
@@ -33,4 +38,6 @@
 
 - **Preserve backward compatibility.** Do not change protocol packets or device matching logic without testing on hardware.
 - **Do not add external Bluetooth libraries.** Current implementation uses Python's `socket` module directly for RFCOMM. Keep it minimal.
+- **Flet is pinned to 1.0.x.** Use the 1.0 API (`ft.run`, `ft.Padding.*`, `ft.Border.*`, `ft.Alignment.*`, `ft.Button`); the lowercase 0.x helpers and `ft.app` no longer exist.
+- **Do not call `platform.system()`.** On some PCs it takes ~80 s (Python queries WMI). Use `sys.platform`.
 - **GitHub URL is contractual.** Hardcoded in UI constants and used by updater. Changes break update checking and links.

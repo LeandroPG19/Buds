@@ -109,12 +109,17 @@ def _migrate_legacy_exceptions(settings: Dict[str, Any]) -> bool:
     return changed
 
 
+def app_data_dir() -> str:
+    """Return the per-user data folder of the app, creating it if needed."""
+    app_data = os.getenv("APPDATA") or os.path.expanduser("~")
+    data_dir = os.path.join(app_data, "MiBudsClient")
+    os.makedirs(data_dir, exist_ok=True)
+    return data_dir
+
+
 def _settings_file_path() -> str:
     """Return the path to the local settings JSON file."""
-    app_data = os.getenv("APPDATA") or os.path.expanduser("~")
-    settings_dir = os.path.join(app_data, "MiBudsClient")
-    os.makedirs(settings_dir, exist_ok=True)
-    return os.path.join(settings_dir, "settings.json")
+    return os.path.join(app_data_dir(), "settings.json")
 
 
 def _load_settings() -> Dict[str, Any]:
@@ -139,11 +144,17 @@ def _load_settings() -> Dict[str, Any]:
 def _save_settings(settings: Dict[str, Any]) -> None:
     """Save settings to disk."""
     path = _settings_file_path()
+    tmp_path = f"{path}.tmp"
     try:
-        with open(path, "w", encoding="utf-8") as f:
-            json.dump(settings, f, indent=2)
+        # Serialize first and swap atomically: a failure must not leave a truncated file.
+        payload = json.dumps(settings, indent=2)
+        with open(tmp_path, "w", encoding="utf-8") as f:
+            f.write(payload)
+        os.replace(tmp_path, path)
     except Exception as e:
         print(f"Failed to save settings: {e}")
+        if os.path.exists(tmp_path):
+            os.remove(tmp_path)
 
 
 def should_show_update_notification(latest_version: str) -> bool:

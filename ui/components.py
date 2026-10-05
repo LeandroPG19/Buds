@@ -83,10 +83,10 @@ class BatteryPanel(ft.Container):
                 spacing=6,
                 vertical_alignment=ft.CrossAxisAlignment.CENTER,
             ),
-            padding=ft.padding.symmetric(horizontal=10, vertical=8),
+            padding=ft.Padding.symmetric(horizontal=10, vertical=8),
             border_radius=16,
             bgcolor=COLOR_CARD_BG,
-            border=ft.border.all(1, "#2D3542"),
+            border=ft.Border.all(1, "#2D3542"),
             expand=True,
         )
     
@@ -166,29 +166,23 @@ class ToggleSettingItem(ft.ListTile):
             self.switch.on_change(MockEvent(self.switch))
 
 
-class LowLatencyModeSettingItem(ft.Column):
-    """Icon-based selector for Off/Auto/On low latency modes."""
+class ModeSelectorSettingItem(ft.Column):
+    """Icon-based selector for a fixed set of modes; `options` is (value, icon, label) per mode."""
 
     def __init__(
         self,
         icon: str,
         icon_bg_color: str,
         title: str,
-        value: str = "off",
+        options: tuple[tuple[str, str, str], ...],
+        value: Optional[str] = None,
         on_change: Optional[Callable] = None,
     ):
         self._on_change = on_change
-        self._value = value if value in {"off", "auto", "on"} else "off"
-        self._mode_icons = {
-            "off": ft.Icons.DO_NOT_DISTURB,
-            "auto": ft.Icons.AUTORENEW,
-            "on": ft.Icons.SPEED,
-        }
-        self._mode_labels = {
-            "off": "Off",
-            "auto": "Auto",
-            "on": "On",
-        }
+        self._default_value = options[0][0]
+        self._mode_icons = {mode: mode_icon for mode, mode_icon, _ in options}
+        self._mode_labels = {mode: label for mode, _, label in options}
+        self._value = value if value in self._mode_icons else self._default_value
         self._mode_buttons = {
             mode: ft.Container(
                 content=ft.Row(
@@ -200,13 +194,13 @@ class LowLatencyModeSettingItem(ft.Column):
                     spacing=6,
                 ),
                 border_radius=10,
-                padding=ft.padding.symmetric(vertical=10),
+                padding=ft.Padding.symmetric(vertical=10),
                 alignment=ft.Alignment.CENTER,
                 expand=True,
                 ink=True,
                 on_click=lambda e, selected_mode=mode: self._select_mode(selected_mode),
             )
-            for mode in ("off", "auto", "on")
+            for mode in self._mode_icons
         }
         self._buttons_row = ft.Row(
             controls=list(self._mode_buttons.values()),
@@ -226,7 +220,7 @@ class LowLatencyModeSettingItem(ft.Column):
                     ),
                     title=ft.Text(title, color=COLOR_TEXT_PRIMARY, weight="medium"),
                 ),
-                ft.Container(content=self._buttons_row, padding=ft.padding.only(left=12, right=12, bottom=8)),
+                ft.Container(content=self._buttons_row, padding=ft.Padding.only(left=12, right=12, bottom=8)),
             ],
             spacing=0,
         )
@@ -258,7 +252,7 @@ class LowLatencyModeSettingItem(ft.Column):
     def set_mode(self, mode: str) -> None:
         normalized = (mode or "").strip().lower()
         if normalized not in self._mode_buttons:
-            normalized = "off"
+            normalized = self._default_value
         self._value = normalized
         self._apply_styles()
         self.update()
@@ -267,7 +261,7 @@ class LowLatencyModeSettingItem(ft.Column):
         for mode, button in self._mode_buttons.items():
             selected = mode == self._value
             button.bgcolor = "#1976D2" if selected else "#2B2F3A"
-            button.border = ft.border.all(
+            button.border = ft.Border.all(
                 1,
                 "#4FC3F7" if selected else "#3B3F4A",
             )
@@ -278,6 +272,61 @@ class LowLatencyModeSettingItem(ft.Column):
                         control.color = "white" if selected else COLOR_DISABLED
                     elif isinstance(control, ft.Text):
                         control.color = "white" if selected else COLOR_TEXT_PRIMARY
+
+
+class LowLatencyModeSettingItem(ModeSelectorSettingItem):
+    """Selector for Off/Auto/On low latency modes."""
+
+    def __init__(
+        self,
+        icon: str,
+        icon_bg_color: str,
+        title: str,
+        value: str = "off",
+        on_change: Optional[Callable] = None,
+    ):
+        super().__init__(
+            icon,
+            icon_bg_color,
+            title,
+            options=(
+                ("off", ft.Icons.DO_NOT_DISTURB, "Off"),
+                ("auto", ft.Icons.AUTORENEW, "Auto"),
+                ("on", ft.Icons.SPEED, "On"),
+            ),
+            value=value,
+            on_change=on_change,
+        )
+
+
+class NoiseControlCard(ft.Container):
+    """Off / noise cancelling / transparency selector, shown only for models that support it."""
+
+    OPTIONS = (
+        ("off", ft.Icons.NOISE_CONTROL_OFF, "Off"),
+        ("anc", ft.Icons.HEADPHONES, "Noise Cancelling"),
+        ("transparency", ft.Icons.NOISE_AWARE, "Transparency"),
+    )
+
+    def __init__(self, on_change: Optional[Callable] = None):
+        self._selector = ModeSelectorSettingItem(
+            ft.Icons.HEARING,
+            "teal_700",
+            "Noise Control",
+            options=self.OPTIONS,
+            on_change=on_change,
+        )
+        super().__init__(
+            content=self._selector,
+            bgcolor=COLOR_CARD_BG,
+            border_radius=CARD_BORDER_RADIUS,
+            padding=10,
+            margin=ft.Margin.only(top=10),
+            visible=False,
+        )
+
+    def set_mode(self, mode: str) -> None:
+        self._selector.set_mode(mode)
 
 
 class PlatformExceptionEditor(ft.Column):
@@ -320,8 +369,8 @@ class PlatformExceptionEditor(ft.Column):
             ),
             bgcolor="#151922",
             border_radius=14,
-            padding=ft.padding.symmetric(horizontal=10, vertical=8),
-            border=ft.border.all(1, "#2A303C"),
+            padding=ft.Padding.symmetric(horizontal=10, vertical=8),
+            border=ft.Border.all(1, "#2A303C"),
         )
 
         self._render_rows()
@@ -329,7 +378,7 @@ class PlatformExceptionEditor(ft.Column):
             controls=[
                 ft.Container(
                     content=ft.Text(label, size=12, color=COLOR_TEXT_PRIMARY, weight="w600"),
-                    padding=ft.padding.only(left=4, bottom=2),
+                    padding=ft.Padding.only(left=4, bottom=2),
                 ),
                 self._editor_surface,
                 self._list_column,
@@ -340,7 +389,7 @@ class PlatformExceptionEditor(ft.Column):
             controls=[
                 ft.Container(
                     content=content_column,
-                    padding=ft.padding.symmetric(horizontal=6, vertical=4),
+                    padding=ft.Padding.symmetric(horizontal=6, vertical=4),
                 )
             ],
             spacing=0,
@@ -380,10 +429,10 @@ class PlatformExceptionEditor(ft.Column):
             self._list_column.controls = [
                 ft.Container(
                     content=ft.Text("No entries.", size=12, color=COLOR_DISABLED),
-                    padding=ft.padding.symmetric(horizontal=10, vertical=8),
+                    padding=ft.Padding.symmetric(horizontal=10, vertical=8),
                     bgcolor="#12161E",
                     border_radius=12,
-                    border=ft.border.all(1, "#2A303C"),
+                    border=ft.Border.all(1, "#2A303C"),
                 )
             ]
             return
@@ -402,8 +451,8 @@ class PlatformExceptionEditor(ft.Column):
                 ),
                 bgcolor="#12161E",
                 border_radius=12,
-                padding=ft.padding.only(left=6, right=4),
-                border=ft.border.all(1, "#2A303C"),
+                padding=ft.Padding.only(left=6, right=4),
+                border=ft.Border.all(1, "#2A303C"),
             )
             for item in self._values
         ]
@@ -477,8 +526,8 @@ class AutoModeSettingsAccordion(ft.ExpansionTile):
             ),
             bgcolor="#151922",
             border_radius=14,
-            padding=ft.padding.symmetric(horizontal=10, vertical=8),
-            border=ft.border.all(1, "#2A303C"),
+            padding=ft.Padding.symmetric(horizontal=10, vertical=8),
+            border=ft.Border.all(1, "#2A303C"),
         )
 
         self.wait_toggle = ToggleSettingItem(
@@ -504,7 +553,7 @@ class AutoModeSettingsAccordion(ft.ExpansionTile):
             border_radius=12,
             alignment=ft.Alignment.CENTER,
             bgcolor="#1B2330",
-            border=ft.border.all(1, "#2D3A4F"),
+            border=ft.Border.all(1, "#2D3A4F"),
         )
 
         header_text = ft.Column(
@@ -529,8 +578,8 @@ class AutoModeSettingsAccordion(ft.ExpansionTile):
             content=ft.Text(platform_text, size=11, weight="w600", color="#BFD7FF"),
             bgcolor="#1B2330",
             border_radius=999,
-            padding=ft.padding.symmetric(horizontal=10, vertical=6),
-            border=ft.border.all(1, "#2D3A4F"),
+            padding=ft.Padding.symmetric(horizontal=10, vertical=6),
+            border=ft.Border.all(1, "#2D3A4F"),
         )
 
         tile_border = ft.RoundedRectangleBorder(
@@ -547,7 +596,7 @@ class AutoModeSettingsAccordion(ft.ExpansionTile):
                         size=11,
                         color=COLOR_DISABLED,
                     ),
-                    padding=ft.padding.only(left=14, right=10, bottom=2),
+                    padding=ft.Padding.only(left=14, right=10, bottom=2),
                 ),
                 ft.Divider(height=1, color="#24303D"),
                 ft.Container(
@@ -559,7 +608,7 @@ class AutoModeSettingsAccordion(ft.ExpansionTile):
                         ],
                         spacing=8,
                     ),
-                    padding=ft.padding.symmetric(horizontal=8, vertical=6),
+                    padding=ft.Padding.symmetric(horizontal=8, vertical=6),
                 ),
             ],
             spacing=10,
@@ -574,7 +623,7 @@ class AutoModeSettingsAccordion(ft.ExpansionTile):
                     spacing=12,
                     vertical_alignment=ft.CrossAxisAlignment.CENTER,
                 ),
-                padding=ft.padding.only(top=4, bottom=4),
+                padding=ft.Padding.only(top=4, bottom=4),
             ),
             bgcolor="#10141B",
             collapsed_bgcolor="#10141B",
@@ -587,7 +636,7 @@ class AutoModeSettingsAccordion(ft.ExpansionTile):
             controls=[
                 ft.Container(
                     content=controls_column,
-                    padding=ft.padding.only(top=6, bottom=2),
+                    padding=ft.Padding.only(top=6, bottom=2),
                 ),
             ],
         )
@@ -641,9 +690,9 @@ class AutoModeSettingsAccordion(ft.ExpansionTile):
         return ft.Container(
             content=ft.Text(mode.capitalize(), size=11, weight="w600", color="white" if selected else COLOR_TEXT_PRIMARY),
             bgcolor="#1976D2" if selected else "#2B2F3A",
-            border=ft.border.all(1, "#4FC3F7" if selected else "#3B3F4A"),
+            border=ft.Border.all(1, "#4FC3F7" if selected else "#3B3F4A"),
             border_radius=999,
-            padding=ft.padding.symmetric(horizontal=10, vertical=5),
+            padding=ft.Padding.symmetric(horizontal=10, vertical=5),
             ink=True,
             on_click=lambda e, name=value, target_mode=mode: self._set_rule_mode(name, target_mode),
         )
@@ -653,10 +702,10 @@ class AutoModeSettingsAccordion(ft.ExpansionTile):
             self._list_column.controls = [
                 ft.Container(
                     content=ft.Text("No entries.", size=12, color=COLOR_DISABLED),
-                    padding=ft.padding.symmetric(horizontal=10, vertical=8),
+                    padding=ft.Padding.symmetric(horizontal=10, vertical=8),
                     bgcolor="#12161E",
                     border_radius=12,
-                    border=ft.border.all(1, "#2A303C"),
+                    border=ft.Border.all(1, "#2A303C"),
                 )
             ]
             return
@@ -684,8 +733,8 @@ class AutoModeSettingsAccordion(ft.ExpansionTile):
                     content=row,
                     bgcolor="#12161E",
                     border_radius=12,
-                    padding=ft.padding.only(left=10, right=6, top=4, bottom=4),
-                    border=ft.border.all(1, "#2A303C"),
+                    padding=ft.Padding.only(left=10, right=6, top=4, bottom=4),
+                    border=ft.Border.all(1, "#2A303C"),
                 )
             )
 
@@ -758,10 +807,12 @@ class SettingsCard(ft.Container):
             on_change=on_startup_toggle
         )
 
+        self._latency_divider = ft.Divider(color=COLOR_DIVIDER, thickness=0.5)
+
         items = ft.Column([
             self.latency_item,
             self.auto_settings,
-            ft.Divider(color=COLOR_DIVIDER, thickness=0.5),
+            self._latency_divider,
             self.startup_item,
             ft.Divider(color=COLOR_DIVIDER, thickness=0.5),
             SettingItem(
@@ -777,6 +828,12 @@ class SettingsCard(ft.Container):
             border_radius=CARD_BORDER_RADIUS,
             padding=10
         )
+
+    def set_latency_supported(self, supported: bool) -> None:
+        """Hide the low latency controls for models that cannot do it."""
+        self.latency_item.visible = supported
+        self.auto_settings.visible = supported
+        self._latency_divider.visible = supported
 
     def set_latency_mode(self, mode: str) -> None:
         self.latency_item.set_mode(mode)
@@ -834,7 +891,7 @@ class DeviceImage(ft.Container):
             width=DEVICE_IMAGE_SIZE + 12,
             height=DEVICE_IMAGE_SIZE + 12,
             alignment=ft.Alignment.CENTER,
-            padding=ft.padding.all(4),
+            padding=ft.Padding.all(4),
             border_radius=(DEVICE_IMAGE_SIZE + 12) // 2,
             bgcolor=None,
         )

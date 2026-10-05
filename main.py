@@ -37,9 +37,15 @@ from ui import (
     BATTERY_UNKNOWN, BATTERY_CHARGING_OFFSET, WindowManager, SystemTray
 )
 from ui.components import (
-    AppTitle, DeviceImage, BatteryPanel, SettingsCard, StatusBar, Spacer, Footer
+    AppTitle, DeviceImage, BatteryPanel, NoiseControlCard, SettingsCard, StatusBar, Spacer, Footer
 )
+
+# Noise control as the earbuds encode it (bluetooth/spp_session.py) and as the UI names it.
+ANC_CODES = {"off": 0, "anc": 1, "transparency": 2}
+ANC_NAMES = {code: name for name, code in ANC_CODES.items()}
+ANC_LABELS = {"off": "Off", "anc": "Noise cancelling", "transparency": "Transparency"}
 from utils.debug_console import DebugConsoleManager
+from utils.diagnostics import PacketLog, packet_log_path
 from utils.game_monitor import FullscreenGameMonitor
 
 
@@ -335,10 +341,29 @@ def main(page: ft.Page):
     # Create UI Components
     # ─────────────────────────────────────────────────────────────────────────
     title = AppTitle(APP_TITLE)
+    model_note = ft.Text(
+        "", size=11, color="orange", text_align=ft.TextAlign.CENTER, visible=False
+    )
     device_image = DeviceImage()
     battery_panel = BatteryPanel()
     status_bar = StatusBar()
     status_bar.size = 11
+    def on_noise_mode_change(e):
+        mode = e.control.value
+        code = ANC_CODES.get(mode)
+        if code is None:
+            return
+
+        def _apply():
+            ok, message = controller.set_anc_mode(code)
+            if ok:
+                update_status(f"{ANC_LABELS[mode]} set", "white")
+            else:
+                update_status(message, "red")
+
+        threading.Thread(target=_apply, daemon=True).start()
+
+    noise_card = NoiseControlCard(on_change=on_noise_mode_change)
     device_status_card = ft.Container(
         content=ft.Row(
             controls=[
@@ -354,7 +379,7 @@ def main(page: ft.Page):
             spacing=12,
             vertical_alignment=ft.CrossAxisAlignment.CENTER,
         ),
-        padding=ft.padding.symmetric(horizontal=12, vertical=10),
+        padding=ft.Padding.symmetric(horizontal=12, vertical=10),
         bgcolor=COLOR_BG,
         border_radius=18,
     )
@@ -391,6 +416,28 @@ def main(page: ft.Page):
 
             page.update()
         
+        elif msg_type == "device":
+            name = str(message.get("name") or APP_TITLE)
+            title.value = name
+            page.title = name
+
+            noise_card.visible = bool(message.get("anc"))
+            settings_card.set_latency_supported(bool(message.get("latency", True)))
+
+            log_path = message.get("log_path")
+            model_note.visible = bool(log_path)
+            if log_path:
+                model_note.value = (
+                    "This model is not verified on hardware yet.\n"
+                    "Battery may be the combined level reported by Windows.\n"
+                    f"Its packets are saved to {log_path}"
+                )
+            page.update()
+
+        elif msg_type == "anc":
+            noise_card.set_mode(str(message.get("mode", "off")))
+            page.update()
+
         elif msg_type == "window":
             action = message.get("action")
             if action == "show":
@@ -477,7 +524,7 @@ def main(page: ft.Page):
                             spacing=6,
                             vertical_alignment=ft.CrossAxisAlignment.CENTER,
                         ),
-                        ft.ElevatedButton(
+                        ft.Button(
                             "Download",
                             icon=ft.Icons.DOWNLOAD,
                             on_click=on_update_click,
@@ -706,8 +753,35 @@ def main(page: ft.Page):
     # ─────────────────────────────────────────────────────────────────────────
     # Initialize Bluetooth Controller
     # ─────────────────────────────────────────────────────────────────────────
+    packet_log_ref = {"log": None}
+
+    def log_packet(direction, data):
+        packet_log = packet_log_ref["log"]
+        if packet_log:
+            packet_log.write(direction, data)
+
+    def on_device_found(device, profile):
+        """Show the detected model; unverified models get their packets recorded."""
+        packet_log = None if profile.verified else PacketLog(packet_log_path(device.name))
+        packet_log_ref["log"] = packet_log
+        page.pubsub.send_all({
+            "type": "device",
+            "name": device.name,
+            "anc": profile.supports_anc,
+            "latency": profile.supports_low_latency,
+            "log_path": str(packet_log.path) if packet_log else "",
+        })
+
+    def on_anc_reported(code):
+        mode = ANC_NAMES.get(code)
+        if mode:
+            page.pubsub.send_all({"type": "anc", "mode": mode})
+
     controller = BTController(
         status_callback=update_status,
+        device_callback=on_device_found,
+        packet_log_callback=log_packet,
+        anc_callback=on_anc_reported,
         battery_callback=update_battery_ui,
         check_battery_callback=lambda: threading.Thread(
             target=request_battery_delayed, 
@@ -853,8 +927,10 @@ def main(page: ft.Page):
     # ─────────────────────────────────────────────────────────────────────────
     page.add(
         title,
+        model_note,
         Spacer(height=8),
         device_status_card,
+        noise_card,
         Spacer(height=10),
         settings_card,
         Spacer(height=5),
@@ -900,4 +976,4 @@ def main(page: ft.Page):
 
 if __name__ == "__main__":
     check_for_existing_instance()
-    ft.app(target=main, assets_dir="assets")
+    ft.run(main, assets_dir="assets")

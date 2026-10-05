@@ -5,6 +5,7 @@ from __future__ import annotations
 import os
 import re
 import subprocess
+import sys
 import threading
 import time
 from typing import Callable, Optional
@@ -271,4 +272,4 @@ def _extract_wm_class(output: str) -> str:
 
 
 def sys_platform_startswith(prefix: str) -> bool:
-    return os.sys.platform.startswith(prefix)
+    return sys.platform.startswith(prefix)

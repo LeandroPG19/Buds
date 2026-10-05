@@ -1,8 +1,7 @@
 import os
 import sys
-import platform
 
-if platform.system() == "Windows":
+if sys.platform.startswith("win"):
     import winreg
 
 APP_NAME = "MiBudsClient"
@@ -73,9 +72,9 @@ def _set_startup_windows(enabled: bool) -> bool:
 
 def set_startup(enabled: bool) -> bool:
     """Enable or disable startup based on platform."""
-    if platform.system() == "Windows":
+    if sys.platform.startswith("win"):
         return _set_startup_windows(enabled)
-    elif platform.system() == "Linux":
+    elif sys.platform.startswith("linux"):
         return _set_startup_linux(enabled)
     return False
 
@@ -100,8 +99,8 @@ def _is_startup_enabled_windows() -> bool:
 
 def is_startup_enabled() -> bool:
     """Check if the application is set to run at startup."""
-    if platform.system() == "Windows":
+    if sys.platform.startswith("win"):
         return _is_startup_enabled_windows()
-    elif platform.system() == "Linux":
+    elif sys.platform.startswith("linux"):
         return _is_startup_enabled_linux()
     return False

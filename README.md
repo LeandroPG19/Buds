@@ -1,6 +1,6 @@
 # MiBudsClient
 
-A Python & Flet-based desktop client for Redmi Buds 6 Play. Features real-time battery tracking and low-latency mode via Bluetooth.
+A Python & Flet-based desktop client for Xiaomi/Redmi Buds. Features real-time battery tracking and low-latency mode via Bluetooth.
 
 ## Features
 
@@ -33,7 +33,7 @@ A Python & Flet-based desktop client for Redmi Buds 6 Play. Features real-time b
    cd MiBudsClient
    ```
 
-2. Install the required dependencies:
+2. Install the required dependencies (Flet 1.0.x; the first launch downloads its desktop client):
    ```bash
    pip install -r requirements.txt
    ```
@@ -66,8 +66,26 @@ flet pack main.py \
 
 ## Supported Devices
 
-- Redmi Buds 6 Play
-- *(Untested on other Xiaomi/Redmi models, but may work if they use a compatible RFCOMM protocol)*
+The app picks whichever connected device is named like a Redmi/Xiaomi Buds and shows its name.
+
+| Model | Status |
+|-------|--------|
+| Redmi Buds 6 Play | Verified on hardware: battery and low latency mode |
+| Redmi Buds 5 Pro | Verified on hardware: battery of each earbud and the case, and noise control (off / noise cancelling / transparency). Low latency mode is not available yet. |
+| Any other Redmi/Xiaomi Buds | Same protocol assumed, **not verified**. The window shows a notice and every packet is recorded to `%APPDATA%\MiBudsClient\packets-<model>.log` so the model can get its own verified profile (see `bluetooth/profiles.py`). |
+
+## Credits
+
+The authentication handshake of newer earbuds (Redmi Buds 5 Pro) follows the protocol documented by
+[Gadgetbridge](https://codeberg.org/Freeyourgadget/Gadgetbridge) and
+[XiaomayEarbudsWin](https://github.com/Apechi/XiaomayEarbudsWin); this is an independent Python implementation validated on real hardware.
+
+## Development
+
+```bash
+pip install -r requirements-dev.txt
+python -m pytest
+```
 
 ## License
 
