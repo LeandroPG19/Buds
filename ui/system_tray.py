@@ -47,7 +47,11 @@ if sys.platform.startswith("linux"):
     elif _ensure_gi_module():
         os.environ.setdefault("PYSTRAY_BACKEND", "gtk")
 
-import pystray
+try:
+    import pystray
+except Exception as e:  # Linux without GTK/AppIndicator, no display...: run without a tray icon
+    pystray = None
+    print(f"System tray unavailable: {e}")
 
 from utils.resource_manager import load_pil_image
 from .constants import TRAY_ICON_PATH, TRAY_ICON_SIZE
@@ -71,6 +75,9 @@ class SystemTray:
     
     def run(self) -> None:
         """Start the system tray icon."""
+        if pystray is None:
+            return
+
         try:
             # Tray uses default icon.png
             tray_image = load_pil_image(TRAY_ICON_PATH, TRAY_ICON_SIZE)
@@ -128,7 +135,7 @@ class SystemTray:
 
     def refresh_menu(self) -> None:
         """Refresh tray menu to reflect updated checked states."""
-        if self.icon and getattr(pystray.Icon, "HAS_MENU", False):
+        if self.icon and pystray and getattr(pystray.Icon, "HAS_MENU", False):
             self.icon.update_menu()
 
     def notify(self, message: str, title: str = "Mi Buds Client") -> None:

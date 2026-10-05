@@ -26,6 +26,6 @@ Models that are not verified yet still work for the battery and record what they
 
 **Windows:** the file is not code-signed, so SmartScreen may say "Windows protected your PC". Choose *More info* then *Run anyway*. The source is public, and you can build the same file yourself (README).
 
-**Linux:** make it executable (`chmod +x MiBudsClient`). It needs BlueZ (the usual Bluetooth stack) and a desktop with a system tray. This build has had little testing on Linux; please report problems.
+**Linux:** make it executable (`chmod +x MiBudsClient`). It needs BlueZ (the usual Bluetooth stack). The tray icon needs GTK 3 (`python3-gi` and `gir1.2-gtk-3.0` on Debian/Ubuntu); without them the app still works, just without the tray icon. This build has had little testing on Linux; please report problems.
 
 Licensed under the GNU GPLv3; the source is at https://github.com/LeandroPG19/Buds.
