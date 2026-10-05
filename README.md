@@ -83,13 +83,20 @@ There are many Redmi/Xiaomi Buds models and I only have a few. If yours is not v
 
 The log only contains the bytes exchanged with the earbuds. It can include your earbuds' Bluetooth address; delete those lines if you prefer. How to turn a capture into a profile is explained in [AGENTS.md](AGENTS.md) and [docs/PROTOCOL.md](docs/PROTOCOL.md).
 
-## Build an executable (Windows)
+## Download
+
+Ready-to-run builds for **Windows** and **Linux** are published on the [Releases page](../../releases): unzip and run, no Python needed. The Windows file is not code-signed, so SmartScreen may warn you; choose *More info* → *Run anyway*.
+
+**macOS is not supported.** The app talks to the earbuds through a Bluetooth RFCOMM socket, and Python does not offer one on macOS, so a Mac build would open but could never reach the earbuds. Supporting it means writing a separate backend on Apple's `IOBluetooth` framework, and it needs a Mac to be tested.
+
+## Build it yourself
 
 ```bash
-flet pack main.py --icon assets\icon.ico --add-data "assets:assets" --name "MiBudsClient"
+pip install -r requirements-build.txt
+python scripts/build.py
 ```
 
-On Linux add `--hidden-import optparse`. There are no prebuilt downloads for this version yet; the [upstream project](https://github.com/CesurPolat/MiBudsClient/releases) publishes executables for the Redmi Buds 6 Play only.
+It runs the tests, builds the program for the system you are on (Windows or Linux) and leaves a zip in `dist/`. The release workflow (`.github/workflows/release.yml`) runs the same script on GitHub.
 
 ## Development
 

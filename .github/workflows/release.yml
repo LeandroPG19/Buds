@@ -1,0 +1,80 @@
+name: Build release
+
+# Manual only: it runs the same script a developer runs (scripts/build.py) on each OS.
+on:
+  workflow_dispatch:
+    inputs:
+      publish:
+        description: "Create a DRAFT GitHub release with the builds (nothing is public until you publish it)"
+        type: boolean
+        default: true
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Build (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        # macOS is left out on purpose: Python has no Bluetooth RFCOMM socket there.
+        os: [windows-latest, ubuntu-latest]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Python (Windows)
+        if: runner.os == 'Windows'
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      # The system Python of Ubuntu is built with Bluetooth socket support.
+      - name: Python (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y python3-venv python3-pip
+          python3 -m venv .venv
+          echo "$GITHUB_WORKSPACE/.venv/bin" >> "$GITHUB_PATH"
+
+      - name: Install
+        run: python -m pip install -r requirements-dev.txt -r requirements-build.txt
+
+      - name: Build
+        run: python scripts/build.py
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: build-${{ matrix.os }}
+          path: dist/*.zip
+          if-no-files-found: error
+
+  release:
+    name: Draft release
+    needs: build
+    if: ${{ inputs.publish }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/download-artifact@v4
+        with:
+          path: dist
+          merge-multiple: true
+
+      - name: Create the draft release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          TAG=$(python3 -c "import re; print(re.search(r'^APP_VERSION\s*=\s*\"(v[^\"]+)\"', open('ui/constants.py', encoding='utf-8').read(), re.M).group(1))")
+          echo "Tag: $TAG"
+          ls -la dist
+          gh release create "$TAG" dist/*.zip \
+            --draft \
+            --target "$GITHUB_SHA" \
+            --title "MiBudsClient $TAG" \
+            --notes-file .github/release-notes.md

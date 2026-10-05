@@ -83,13 +83,20 @@ Hay muchos modelos de Redmi/Xiaomi Buds y yo solo tengo unos pocos. Si el tuyo n
 
 El archivo solo contiene los bytes intercambiados con los audífonos. Puede incluir la dirección Bluetooth de tus audífonos; borra esas líneas si prefieres. Cómo convertir una captura en un perfil se explica en [AGENTS.md](AGENTS.md) y [docs/PROTOCOL.md](docs/PROTOCOL.md).
 
-## Crear un ejecutable (Windows)
+## Descargar
+
+Hay versiones listas para usar para **Windows** y **Linux** en la [página de Releases](../../releases): descomprime y ejecuta, sin necesidad de Python. El archivo de Windows no está firmado, así que SmartScreen puede avisarte; elige *Más información* → *Ejecutar de todas formas*.
+
+**macOS no está soportado.** La app habla con los audífonos mediante un socket Bluetooth RFCOMM y Python no lo ofrece en macOS, así que una versión para Mac abriría pero nunca podría llegar a los audífonos. Soportarlo exige escribir un módulo aparte con el framework `IOBluetooth` de Apple y hace falta una Mac para probarlo.
+
+## Compilarlo tú mismo
 
 ```bash
-flet pack main.py --icon assets\icon.ico --add-data "assets:assets" --name "MiBudsClient"
+pip install -r requirements-build.txt
+python scripts/build.py
 ```
 
-En Linux agrega `--hidden-import optparse`. Todavía no hay descargas ya compiladas de esta versión; el [proyecto original](https://github.com/CesurPolat/MiBudsClient/releases) publica ejecutables solo para el Redmi Buds 6 Play.
+Ejecuta las pruebas, compila el programa para el sistema en que estés (Windows o Linux) y deja un zip en `dist/`. El flujo de publicación (`.github/workflows/release.yml`) ejecuta el mismo script en GitHub.
 
 ## Desarrollo
 

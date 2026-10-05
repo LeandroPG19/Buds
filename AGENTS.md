@@ -42,4 +42,4 @@
 - **Do not add external Bluetooth libraries.** Current implementation uses Python's `socket` module directly for RFCOMM. Keep it minimal.
 - **Flet is pinned to 1.0.x.** Use the 1.0 API (`ft.run`, `ft.Padding.*`, `ft.Border.*`, `ft.Alignment.*`, `ft.Button`); the lowercase 0.x helpers and `ft.app` no longer exist.
 - **Do not call `platform.system()`.** On some PCs it takes ~80 s (Python queries WMI). Use `sys.platform`.
-- **GitHub URL is contractual.** Hardcoded in UI constants and used by updater. Changes break update checking and links.
+- **GitHub URL is contractual.** `GITHUB_URL` in `ui/constants.py` is the repository whose releases the updater reads and where the footer and "Download" links point. It is this fork (`LeandroPG19/Buds`), where the builds are published; if the repository ever moves, change it in step with where releases are published, or update checking breaks. `APP_VERSION` must be bumped before publishing a release: the release tag is read from it.
